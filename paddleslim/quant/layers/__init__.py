@@ -13,5 +13,5 @@
 # limitations under the License.
 
 from .parallel_linear import QuantizedColumnParallelLinear, QuantizedRowParallelLinear
-
-__all__ = ["QuantizedColumnParallelLinear", "QuantizedRowParallelLinear"]
+from .fp8quanted_linear import FP8QuantedLinear
+__all__ = ["QuantizedColumnParallelLinear", "QuantizedRowParallelLinear", "FP8QuantedLinear"]
