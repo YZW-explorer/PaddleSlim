@@ -26,7 +26,7 @@ class UniformObserver(BaseObserver):
     an integer value ensuring that zero is quantized without error.
 
     Args:
-        quant_bits (int): The number of bits for quantization.
+        quant_bits (int) or (Tuple): The number of bits for quantization.
         sign (bool): Whether the quantized integer includes a sign.
         symmetric (bool): Whether it is symmetric quantization. the quantization is symmetric.
         In symmetric quantization, the range of floating point values is relaxed to be symmetric
@@ -99,19 +99,15 @@ class UniformObserver(BaseObserver):
         # It is important to ensure that common operations like zero padding do not cause quantization errors.
         _min = min(self.min_value(), 0.)
         _max = max(self.max_value(), 0.)
-        if isinstance(self._quant_bits,tuple):
-            _abs_max = max(-_min, _max)
-            self._scale = _qmax / _abs_max
-            self._zero_point = 0
-        else:    
-            if self._symmetric:
-                self._scale = max(-_min, _max)
-                if self._sign:
-                    self._zero_point = 0
-                else:
-                    self._zero_point = (_qmax + _qmin) / 2
+
+        if self._symmetric:
+            self._scale = max(-_min, _max)
+            if self._sign:
+                self._zero_point = 0
             else:
-                self._scale = (_max - _min) / float(_qmax - _qmin)
-                self._zero_point = _qmin - round(_min / self._scale)
-                self._zero_point = np.clip(self._zero_point, _qmin, _qmax)
+                self._zero_point = (_qmax + _qmin) / 2
+        else:
+            self._scale = (_max - _min) / float(_qmax - _qmin)
+            self._zero_point = _qmin - round(_min / self._scale)
+            self._zero_point = np.clip(self._zero_point, _qmin, _qmax)
         return self._scale, self._zero_point
