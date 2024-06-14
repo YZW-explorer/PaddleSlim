@@ -21,6 +21,7 @@
 - `EMDObserver`：收集最大绝对值并通过最小化EMD误差，收集量化scale
 - `HistObserver`：将张量值收集到直方图中，并根据百分比计算量化scale
 - `KLObserver`：以最小化浮点值分布与量化浮点值分布之间的 Kullback-Leibler散度计算量化scale
+- `AbsmaxObserver`：根据目标权重的Tensor维度，收集最大绝对值作为量化scale，可使用quant_bits调整量化的数据类型，支持FP8
 - `AbsMaxChannelWiseWeightObserver`：根据目标权重的通道维度，收集最大绝对值作为量化scale
 - `MSEChannelWiseWeightObserver`：根据目标权重的通道维度，收集最大绝对值并通过最小化MSE误差，收集量化scale
 
@@ -60,8 +61,8 @@ model = mobilenet_v1()
 q_config = QuantConfig(activation=None, weight=None)
 
 # define act_quanter and weight_quanter
-act_quanter = MSEObserver()
-weight_quanter = MSEObserver()
+activation = AbsmaxObserver(quant_bits = (4,3)) # quant_bits = (4,3) and quant_bits = (5,2) for float8_e4m3 and float8_e5m2 formats quantization.
+act_quanter = MSEObserver(quant_bits = 8) # quant_bits = n for int n bits format quantization.
 
 # map ColumnParallelLinear to QuantizedColumnParallelLinear
 q_config.add_qat_layer_mapping(ColumnParallelLinear,
