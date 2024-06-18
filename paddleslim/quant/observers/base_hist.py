@@ -68,7 +68,9 @@ class BaseHistObserver(UniformObserver):
         self._zero_point = None
         self._min = None
         self._max = None
-
+        
+        dtype = inputs.dtype
+        inputs = inputs.cast('float32')
         if self._hist_min is None or self._hist_max is None:
             self._hist_min, self._hist_max = self._min_max(inputs)
             self._hist = self._init_hists(inputs)
@@ -82,7 +84,7 @@ class BaseHistObserver(UniformObserver):
                 self._upsample_bin_count, )
             self._hist_min, self._hist_max = new_min, new_max
             self._hist = new_hist
-        return inputs
+        return inputs.cast(dtype)
 
     def _update_min_max_and_hist(self, tensor, origin_min, origin_max,
                                  origin_hist, bins_count, upsample_bins_count):
