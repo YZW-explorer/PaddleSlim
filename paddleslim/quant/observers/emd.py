@@ -67,7 +67,6 @@ class EMDObserverLayer(UniformObserver):
         while s <= 1.0:
             scale = s * abs_max_value
             s += 0.02
-            bins = 2**(self._quant_bits - 1) - 1
             quant_var = paddle.clip(
                 paddle.round(inputs / scale * self.qmax), -self.qmax - 1,
                 self.qmax)
