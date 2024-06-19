@@ -68,7 +68,8 @@ class BaseHistObserver(UniformObserver):
         self._zero_point = None
         self._min = None
         self._max = None
-        
+        """" Cast inputs to 'float32' for numpy compatibility in _init_hists function, avoiding issues with types like bf16.
+        """
         dtype = inputs.dtype
         inputs = inputs.cast('float32')
         if self._hist_min is None or self._hist_max is None:
