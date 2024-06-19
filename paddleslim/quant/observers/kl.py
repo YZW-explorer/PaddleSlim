@@ -127,6 +127,8 @@ def cal_kl_threshold(hist, bin_width, bits):
     assert hist.ndim == 1
     hist_bins = hist.shape[0]
     starting_iter = int((hist_bins - 1) * 0.5)
+    if isinstance(bits,tuple):
+        bits = bits[0] + bits[1]
     quant_range = 2**(bits - 1) - 1
 
     P_sum = np.sum(np.array(hist).ravel())
