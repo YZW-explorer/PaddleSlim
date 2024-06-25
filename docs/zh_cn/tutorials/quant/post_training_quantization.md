@@ -15,13 +15,13 @@
 
 ### 1. 量化配置相关概念以及接口：
 
-`Observer`：用于统计OP输入或输出，并计算出量化相关的统计量，比如scale、zero_point等。每个离线量化算法对应一个Observer，现已有的Observer包含：
+`Observer`：用于统计OP输入或输出，并计算出量化相关的统计量，比如scale、zero_point等。每个离线量化算法对应一个Observer，Observer可以使用属性quant_bits调整量化的数据类型，quant_bits = 8代表INT8量化，quant_bits = (4,3)代表FP8量化，现已有的Observer包含：
 - `AVGObserver`：收集目标Tensor的平均值作为量化scale
 - `MSEObserver`：收集最大绝对值并通过最小化MSE误差，收集量化scale
 - `EMDObserver`：收集最大绝对值并通过最小化EMD误差，收集量化scale
 - `HistObserver`：将张量值收集到直方图中，并根据百分比计算量化scale
 - `KLObserver`：以最小化浮点值分布与量化浮点值分布之间的 Kullback-Leibler散度计算量化scale
-- `AbsmaxObserver`：根据目标权重的Tensor维度，收集最大绝对值作为量化scale，可使用quant_bits调整量化的数据类型，支持FP8
+- `AbsmaxObserver`：根据目标权重的Tensor维度，收集最大绝对值作为量化scale
 - `AbsMaxChannelWiseWeightObserver`：根据目标权重的通道维度，收集最大绝对值作为量化scale
 - `MSEChannelWiseWeightObserver`：根据目标权重的通道维度，收集最大绝对值并通过最小化MSE误差，收集量化scale
 
@@ -45,7 +45,7 @@
 | convert | `model`：需要被转化的量化模型 <br> `inplace`：inplace=True时，该模型会被inplace的量化；inplace=False时，不改变原模型，并且会return一个量化的模型 | 将模型转化成onnx形式，进行此步骤之后才能对量化模型进行验证、导出成静态图等
 
 
-## 使用示例
+## INT8量化使用示例
 ```python
 import paddle
 import paddleslim
@@ -61,8 +61,57 @@ model = mobilenet_v1()
 q_config = QuantConfig(activation=None, weight=None)
 
 # define act_quanter and weight_quanter
-activation = AbsmaxObserver(quant_bits = (4,3)) # quant_bits = (4,3) and quant_bits = (5,2) for float8_e4m3 and float8_e5m2 formats quantization.
-act_quanter = MSEObserver(quant_bits = 8) # quant_bits = n for int n bits format quantization.
+act_quanter = MSEObserver()
+weight_quanter = MSEObserver()
+
+# map ColumnParallelLinear to QuantizedColumnParallelLinear
+q_config.add_qat_layer_mapping(ColumnParallelLinear,
+                                QuantizedColumnParallelLinear)
+# map RowParallelLinear to QuantizedRowParallelLinear
+q_config.add_qat_layer_mapping(RowParallelLinear,
+                                QuantizedRowParallelLinear)
+# for each layer if type in [paddle.nn.Linear, ColumnParallelLinear, RowParallelLinear]
+# make them quantizable
+q_config.add_type_config(
+        [paddle.nn.Linear, ColumnParallelLinear, RowParallelLinear],
+        activation=activation,
+        weight=weight,
+    )
+
+
+ptq = PTQ(q_config)
+model = ptq.quantize(model, inplace=True)
+
+# ptq sample
+ptq_step = 100
+for step, data in enumerate(dataloader):
+    pred = model(data)
+    if step == ptq_step:
+        break
+
+# convert to quant model that can evaluate and export
+model = ptq.convert(model, inplace=True)
+```
+
+
+## FP8量化使用示例
+```python
+import paddle
+import paddleslim
+from paddle.vision.models import mobilenet_v1
+from paddle.quantization import QuantConfig
+from paddle.quantization import PTQ
+from paddleslim.quant.observers import HistObserver, KLObserver, EMDObserver, MSEObserver, AVGObserver, MSEChannelWiseWeightObserver, AbsMaxChannelWiseWeightObserver
+
+# create the model
+model = mobilenet_v1()
+
+# define QuantConfig
+q_config = QuantConfig(activation=None, weight=None)
+
+# define act_quanter and weight_quanter
+act_quanter = AbsmaxObserver(quant_bits=(4,3))
+weight_quanter = AbsMaxChannelWiseWeightObserver(quant_bits=(4,3))
 
 # map ColumnParallelLinear to QuantizedColumnParallelLinear
 q_config.add_qat_layer_mapping(ColumnParallelLinear,
